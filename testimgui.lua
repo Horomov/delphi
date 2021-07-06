@@ -3,6 +3,7 @@ script_author('delphi')
 script_version('1')
 require "lib.moonloader"
 local sampev = require 'lib.samp.events'
+local dlstatus = require('moonloader').download_status
 local imgui = require 'imgui'
 local encoding = require 'encoding'
 encoding.default = 'CP1251'
@@ -115,6 +116,7 @@ function main()
 --	if not isAvailableUser(code, '1123') then
 --		sampAddChatMessage('q',-1)
 --	end
+	update()
 	sampAddChatMessage(tag..'Тестовый скрипт успешно загружен!',-1)
 	sampRegisterChatCommand('test', testimgui)
 	sampRegisterChatCommand('codeg', cmd_code)
@@ -137,7 +139,7 @@ function main()
 	end 
 end
 function cmd_code()
-	sampShowDialog(2, "Активация PREMIUM","{FFFFFF}Введите код в строку ниже", "Выбрать", "Закрыть", 1)
+	sampShowDialog(2, "Активация PREMIUM","{FFFFFF}Введите код в строку ниже11", "Выбрать", "Закрыть", 1)
 end
 function cmd_codes(id)
 	if tonumber(id) == nil or tonumber(id) > #code then sampAddChatMessage(tag..'Такого кода нет!',-1) return end
@@ -248,4 +250,37 @@ function getTableUsersByUrl(url)
         os.remove(n_file)
     end
     return bool, code
+end
+
+function update()
+	local fpath = os.getenv('TEMP') .. '\\testing_version.json' -- куда будет качаться наш файлик для сравнения версии
+	downloadUrlToFile('https://raw.githubusercontent.com/Horomov/admintools/master/autoupdate.json', fpath, function(id, status, p1, p2) -- ссылку на ваш гитхаб где есть строчки которые я ввёл в теме или любой другой сайт
+	  if status == dlstatus.STATUS_ENDDOWNLOADDATA then
+	  local f = io.open(fpath, 'r') -- открывает файл
+	  if f then
+		local info = decodeJson(f:read('*a')) -- читает
+		updatelink = info.updateurl
+		if info and info.latest then
+		  version = tonumber(info.latest) -- переводит версию в число
+		  if version > tonumber(thisScript().version) then -- если версия больше чем версия установленная то...
+			lua_thread.create(goupdate) -- апдейт
+		  else -- если меньше, то
+			update = false -- не даём обновиться
+			sampAddChatMessage(tag..'Обновлений не найдено.', -1)
+		  end
+		end
+	  end
+	end
+  end)
+end
+function goupdate()
+	sampAddChatMessage(tag..'Обнаружено обновление. AutoReload может конфликтовать. Обновляюсь...', -1)
+	sampAddChatMessage(tag..'Текущая версия: '..thisScript().version..". Новая версия: "..version, -1)
+	wait(300)
+	downloadUrlToFile(updatelink, thisScript().path, function(id3, status1, p13, p23) -- качает ваш файлик с latest version
+		if status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
+		sampAddChatMessage(tag..'Обновление завершено!', -1)
+		thisScript():reload()
+		end
+	end)
 end
