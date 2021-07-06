@@ -1,6 +1,6 @@
 script_name('testimgui')
 script_author('delphi')
-script_version('1')
+script_version('2')
 require "lib.moonloader"
 local sampev = require 'lib.samp.events'
 local dlstatus = require('moonloader').download_status
